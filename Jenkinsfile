@@ -2,51 +2,84 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'tg/todo-app:1.0'
+        IMAGE_NAME = "tg/todo-app"
+        IMAGE_TAG  = "1.0"
+        REGISTRY_CREDENTIALS = "dockerhub-creds"
     }
 
     stages {
-
-        stage('Build') {
+        stage('Checkout') {
             steps {
-                echo 'Building Spring Boot application...'
-                bat 'mvn clean package -DskipTests'
+                checkout scm
             }
         }
 
-        stage('Docker Build') {
+        stage('Build') {
             steps {
-                echo 'Building Docker image...'
-                bat "docker build -t %DOCKER_IMAGE% ."
+                script {
+                    if (isUnix()) {
+                        sh './mvnw clean package -DskipTests'
+                    } else {
+                        bat 'call mvnw.cmd clean package -DskipTests'
+                    }
+                }
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Running unit tests...'
-                bat 'mvn test'
+                script {
+                    if (isUnix()) {
+                        sh './mvnw test'
+                    } else {
+                        bat 'call mvnw.cmd test'
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                script {
+                    if (isUnix()) {
+                        sh "docker build -f Dockerfile_RaiF -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+                    } else {
+                        bat "docker build -f Dockerfile_RaiF -t %IMAGE_NAME%:%IMAGE_TAG% ."
+                    }
+                }
             }
         }
 
         stage('Push') {
             steps {
-                echo 'Pushing Docker image to registry...'
-                bat "docker tag %DOCKER_IMAGE% %DOCKER_IMAGE%"
-                bat "docker push %DOCKER_IMAGE%"
+                withCredentials([usernamePassword(
+                    credentialsId: "${REGISTRY_CREDENTIALS}",
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    script {
+                        if (isUnix()) {
+                            sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                            sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
+                        } else {
+                            bat 'echo %DOCKER_PASS% | docker login -u %DOCKER_USER% --password-stdin'
+                            bat "docker push %IMAGE_NAME%:%IMAGE_TAG%"
+                        }
+                    }
+                }
             }
         }
-
     }
 
     post {
         always {
-            echo 'Pipeline finished'
-        }
-        success {
-            echo 'Build succeeded!'
-        }
-        failure {
-            echo 'Build failed!'
+            script {
+                if (isUnix()) {
+                    sh 'docker logout || true'
+                } else {
+                    bat 'docker logout'
+                }
+            }
         }
     }
 }
