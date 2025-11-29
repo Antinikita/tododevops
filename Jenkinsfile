@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "todo-app"
+        IMAGE_NAME = "antinikita/todo-app"
         IMAGE_TAG  = "1.0"
         REGISTRY_CREDENTIALS = "dockerhub-creds"
     }
