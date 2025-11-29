@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = 'tg/tododevops:1.0'
+        DOCKER_IMAGE = 'tg/todo-app:1.0'
     }
 
     stages {
@@ -10,29 +10,29 @@ pipeline {
         stage('Build') {
             steps {
                 echo 'Building Spring Boot application...'
-                sh 'mvn clean package -DskipTests'
+                bat 'mvn clean package -DskipTests'
             }
         }
 
         stage('Docker Build') {
             steps {
                 echo 'Building Docker image...'
-                sh "docker build -t ${DOCKER_IMAGE} ."
+                bat "docker build -t %DOCKER_IMAGE% ."
             }
         }
 
         stage('Test') {
             steps {
                 echo 'Running unit tests...'
-                sh 'mvn test'
+                bat 'mvn test'
             }
         }
 
         stage('Push') {
             steps {
                 echo 'Pushing Docker image to registry...'
-                sh "docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE}"
-                sh "docker push ${DOCKER_IMAGE}"
+                bat "docker tag %DOCKER_IMAGE% %DOCKER_IMAGE%"
+                bat "docker push %DOCKER_IMAGE%"
             }
         }
 
